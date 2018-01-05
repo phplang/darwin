@@ -20,7 +20,6 @@
 #define incl_DARWIN_H
 
 #include "php_darwin.h"
-#include "zend_exceptions.h" // temporary
 #include <CoreFoundation/CoreFoundation.h>
 #include <Security/Security.h>
 
@@ -50,7 +49,6 @@ namespace php { namespace darwin {
 #define X(T) extern zend_class_entry *T##_ce;
 PHP_OBJECTDARWINTYPES(X)
 #undef X
-extern zend_class_entry *SecTransform_ce;
 
 #define X(T) extern CFTypeID k##T##TypeID;
 PHP_DARWINTYPES(X)
