@@ -209,11 +209,6 @@ public:
 	bool operator!() const { return m_px == nullptr; }
 	operator bool() const { return m_px != nullptr; }
 
-	CFTypeID type() const { return CFGetTypeID((CFTypeRef)m_px); }
-#define X(T) bool is##T() const { return type() == k##T##TypeID; }
-PHP_DARWINTYPES(X)
-#undef X
-
 private:
 	T m_px;
 };
