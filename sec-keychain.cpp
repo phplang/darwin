@@ -125,6 +125,7 @@ static PHP_METHOD(SecKeychain, unlock) {
 }
 /* }}} */
 
+/* {{{ proto int SecKeychain::getVersion() */
 static PHP_METHOD(SecKeychain, getVersion) {
 	if (zend_parse_parameters_none_throw() == FAILURE) { return; }
 
@@ -136,6 +137,7 @@ static PHP_METHOD(SecKeychain, getVersion) {
 
 	RETURN_LONG(version);
 }
+/* }}} */
 
 static zend_function_entry seckeychain_methods[] = {
 	/* Create instances via ::Open or ::Create */
