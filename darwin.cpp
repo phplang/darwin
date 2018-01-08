@@ -20,6 +20,7 @@
 #include "zend_exceptions.h"
 
 #include <exception>
+#include <sstream>
 
 namespace php { namespace darwin {
 
@@ -247,6 +248,49 @@ zend_array* zend_array_from_CFDictionary(CFDictionaryRef dict) {
 	// TODO: An exception during the callback might... break things.
 	CFDictionaryApplyFunction(dict, elem_from_cfelem, ret);
 	return ret;
+}
+
+/*************************************************************************/
+// CFDate
+
+// CFAbsoluteTime is relative to Jan 1 2001 00:00:00 GMT
+// Unix Epoch (and thereby DateTime) is relative to Jan 1, 1970 00:00:00 GMT
+static constexpr CFAbsoluteTime k20010101_000000_GMT = 978307200;
+
+void zval_from_CFDate(zval *pzv, CFDateRef date) {
+	zval fname;
+	ZVAL_STRING(&fname, "date_create");
+
+	std::ostringstream ss;
+	ss << '@' << (CFDateGetAbsoluteTime(date) + k20010101_000000_GMT);
+	zval arg;
+	ZVAL_STRING(&arg, ss.str().c_str());
+
+	ZVAL_UNDEF(pzv);
+	const auto ret = call_user_function(EG(function_table), nullptr, &fname, pzv, 1, &arg);
+	zval_dtor(&arg);
+	zval_dtor(&fname);
+
+	if ((ret == FAILURE) || (Z_TYPE_P(pzv) != IS_OBJECT)) {
+		zval_dtor(pzv);
+		throw DarwinException(0, "Unable to instantiate DateTime object");
+	}
+}
+
+CFDateRef zval_to_CFDate(zval *value) {
+	zval fname, retval;
+	ZVAL_STRING(&fname, "date_timestamp_get");
+	ZVAL_UNDEF(&retval);
+
+	const auto ret = call_user_function(EG(funciton_table), nullptr, &fname, &retval, 1, value);
+	zval_dtor(&fname);
+
+	if ((ret == FAILURE) || (Z_TYPE(retval) != IS_LONG)) {
+		zval_dtor(&retval);
+		throw DarwinException(0, "Unable to fetch timestamp from DateTime object");
+	}
+
+	return CFDateCreate(nullptr, Z_LVAL(retval) - k20010101_000000_GMT);
 }
 
 /*************************************************************************/

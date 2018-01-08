@@ -35,7 +35,8 @@ namespace php { namespace darwin {
 	X(CFString) \
 	X(CFData) \
 	X(CFArray) \
-	X(CFDictionary)
+	X(CFDictionary) \
+	X(CFDate)
 
 // Wrapped PHP objects: Darwin\\X
 #define PHP_OBJECTDARWINTYPES(X) \
@@ -266,6 +267,9 @@ inline void zval_from_CFDictionary(zval *pzv, CFDictionaryRef dict) {
 inline CFArrayRef zval_to_CFDictionary(zval *pzv) {
 	throw DarwinException(0, "zval_to_CFDictionary() makes no sense");
 }
+
+void zval_from_CFDate(zval *pzv, CFDateRef date);
+CFDateRef zval_to_CFDate(zval* pzv);
 
 #define X(T) \
 inline void zval_from_##T(zval *pzv, T##Ref value) { \

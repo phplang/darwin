@@ -10,10 +10,11 @@ but a few key affordances are made:
 
   * Procedural APIs using opaque pointer types are replaced with OOP instance methods and static factory methods.
     * Method names are often shortened to fit an OOP style API.
-  * Scalar Core Foundation types are represented as PHP Scalars:
+  * Basic Core Foundation types are represented as PHP natives:
     * CFBoolean: bool
     * CFNumber: int/float
     * CFString/CFData: string (CFString is UTF-8 text, CFData is binary)
+    * CFDate: DateTime
   * CFError is promoted to an exception class and thrown, rather than returned.
 
 ## Classes

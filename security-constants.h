@@ -547,8 +547,8 @@ PHP_DARWIN_STR(kSecAttrAccessControl) // SecAccessControl
 PHP_DARWIN_STR(kSecAttrAccessible) // CFType
 PHP_DARWIN_ATTR(kSecAttrAccessGroup, CFString)
 PHP_DARWIN_ATTR(kSecAttrSynchronizable, CFString)
-PHP_DARWIN_STR(kSecAttrCreationDate) // CFDate
-PHP_DARWIN_STR(kSecAttrModificationDate) // CFDate
+PHP_DARWIN_ATTR(kSecAttrCreationDate, CFDate)
+PHP_DARWIN_ATTR(kSecAttrModificationDate, CFDate)
 PHP_DARWIN_ATTR(kSecAttrDescription, CFString)
 PHP_DARWIN_ATTR(kSecAttrComment, CFString)
 PHP_DARWIN_ATTR(kSecAttrCreator, CFNumber)
