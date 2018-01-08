@@ -23,6 +23,9 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <Security/Security.h>
 
+#include <functional>
+#include <vector>
+
 namespace php { namespace darwin {
 
 // Mappable primitive types
@@ -178,8 +181,11 @@ PHP_MINIT_FUNCTION(darwin_Exception);
 template<typename T>
 class CFType {
 public:
-	CFType() = delete;
-	CFType(const CFType<T>&) = delete;
+	CFType(): m_px(nullptr) {}
+	CFType(const CFType<T>& src) {
+		m_px = src.m_px;
+		if (m_px) { CFRetain(m_px); }
+	}
 	CFType(CFType<T>&& src) {
 		m_px = src.m_px;
 	}
@@ -297,6 +303,12 @@ CFTypeRef zval_to_CFType(zval *value, CFTypeID type);
 // Security
 
 PHP_MINIT_FUNCTION(darwin_Security);
+CFType<CFMutableDictionaryRef> SecAttr_zend_array_to_CFMutableDictionary(
+	zend_array *arr,
+	std::function<bool(CFMutableDictionaryRef, zend_string*, zval*)> unknown = nullptr
+);
+void SecAttr_zend_array_check_required_params(zend_array *arr, std::vector<zend_string*> req);
+
 PHP_MINIT_FUNCTION(darwin_SecurityException);
 #define X(T) PHP_MINIT_FUNCTION(darwin_##T);
 PHP_OBJECTDARWINTYPES(X)
@@ -312,7 +324,9 @@ PHP_MINIT_FUNCTION(darwin_SecTransform);
 #define PHP_DARWIN_LONG(X)
 #define PHP_DARWIN_STR(X) \
 	extern zend_string *zstr_##X;
+#define PHP_DARWIN_ATTR(name, type) PHP_DARWIN_STR(name)
 # include "security-constants.h"
+#undef PHP_DARWIN_ATTR
 #undef PHP_DARWIN_STR
 #undef PHP_DARWIN_LONG
 

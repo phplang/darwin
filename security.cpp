@@ -19,6 +19,8 @@
 #include "darwin.h"
 #include "zend_exceptions.h"
 
+#include <sstream>
+
 namespace php { namespace darwin {
 
 static zend_class_entry *security_ce = nullptr;
@@ -26,13 +28,75 @@ static zend_class_entry *security_ce = nullptr;
 #define PHP_DARWIN_LONG(X)
 #define PHP_DARWIN_STR(X) \
 	zend_string *zstr_##X = nullptr;
+#define PHP_DARWIN_ATTR(name, type) PHP_DARWIN_STR(name)
 # include "security-constants.h"
+#undef PHP_DARWIN_ATTR
 #undef PHP_DARWIN_STR
 #undef PHP_DARWIN_LONG
+
+static CFType<CFTypeRef> zval_secattr_to_CFType(zval *value, zend_string* zkey, CFStringRef& key) {
+	CFType<CFStringRef> cfkey(zend_string_to_CFString(zkey));
+#define PHP_DARWIN_LONG(X)
+#define PHP_DARWIN_STR(X)
+#define PHP_DARWIN_ATTR(name, type) \
+	if (!CFStringCompare(cfkey.get(), name, 0)) { \
+		key = name; \
+		return CFType<CFTypeRef>(zval_to_##type(value)); \
+	}
+# include "security-constants.h"
+#undef PHP_DARWIN_ATTR
+#undef PHP_DARWIN_STR
+#undef PHP_DARWIN_LONG
+	return CFType<CFTypeRef>();
+}
+
+CFType<CFMutableDictionaryRef> SecAttr_zend_array_to_CFMutableDictionary(zend_array *arr, std::function<bool(CFMutableDictionaryRef, zend_string*, zval*)> unknown) {
+	CFType<CFMutableDictionaryRef> dict(CFDictionaryCreateMutable(nullptr,
+		zend_hash_num_elements(arr),
+		&kCFTypeDictionaryKeyCallBacks,
+		&kCFTypeDictionaryValueCallBacks));
+	zend_string *key;
+	zval *val;
+
+	ZEND_HASH_FOREACH_STR_KEY_VAL(arr, key, val) {
+		if (!key) {
+			throw DarwinException(0, "Invalid numeric attribute key");
+		}
+		CFStringRef cfkey = nullptr;
+		auto cfval = zval_secattr_to_CFType(val, key, cfkey);
+		if (!cfkey || !cfval) {
+			if (!unknown || !unknown(dict.get(), key, val)) {
+				throw DarwinException(0, "Unknown parameter '%s' in params array", ZSTR_VAL(key));
+			}
+		} else {
+			CFDictionaryAddValue(dict.get(), cfkey, cfval.get());
+		}
+	} ZEND_HASH_FOREACH_END();
+
+	return dict;
+}
 
 static zend_function_entry security_methods[] = {
 	PHP_FE_END
 };
+
+void SecAttr_zend_array_check_required_params(zend_array *arr, std::vector<zend_string*> req) {
+	std::ostringstream ss;
+	ss << "Missing required elements in parameters array: ";
+	bool missing = false;
+
+	for (auto* zstr : req) {
+		if (!zend_hash_exists(arr, zstr)) {
+			if (missing) { ss << ", "; }
+			missing = true;
+			ss << ZSTR_VAL(zstr);
+		}
+	}
+
+	if (missing) {
+		throw DarwinException(0, "%s", ss.str().c_str());
+	}
+}
 
 PHP_MINIT_FUNCTION(darwin_Security) {
 	zend_class_entry ce;
@@ -55,7 +119,9 @@ PHP_MINIT_FUNCTION(darwin_Security) {
 	zend_declare_class_constant(security_ce, \
 		#X, sizeof(#X) - 1, &cns); \
 }
+#define PHP_DARWIN_ATTR(name, type) PHP_DARWIN_STR(name)
 # include "security-constants.h"
+#undef PHP_DARWIN_ATTR
 #undef PHP_DARWIN_STR
 #undef PHP_DARWIN_LONG
 

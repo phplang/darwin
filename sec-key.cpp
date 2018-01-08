@@ -56,59 +56,6 @@ static PHP_METHOD(SecKey, __construct) {
 
 /* OSX specific APIs, iOS has different APIs... */
 #if SEC_OS_OSX
-static void marshal_keygen_param(CFMutableDictionaryRef dict,
-                                 CFStringRef cfkey,
-                                 CFTypeID cftype,
-                                 zend_array *container,
-                                 zend_string *key,
-                                 bool required) {
-	auto* value = zend_symtable_find(container, key);
-	if (!value) {
-		if (required) {
-			throw DarwinException(0, "Missing element '%s' from keygen params", ZSTR_VAL(key));
-		}
-		return;
-	}
-
-	CFType<CFTypeRef> cfval(zval_to_CFType(value, cftype));
-	if (!cfval) {
-		throw DarwinException(0, "Invalid type supplied for KeyGen element '%s'", ZSTR_VAL(key));
-	}
-
-	CFDictionaryAddValue(dict, cfkey, cfval.get());
-}
-
-#define MARSHAL_KEYGEN_PARAM(ret, key, type, container, req) \
-	marshal_keygen_param(ret.get(), key, k##type##TypeID, container, zstr_##key, req)
-
-/* {{{ marshal_symmetric_keygen_params */
-static CFType<CFMutableDictionaryRef> marshal_symmetric_keygen_params(zend_array *params) {
-	CFType<CFMutableDictionaryRef> ret(CFDictionaryCreateMutable(nullptr,
-		zend_hash_num_elements(params),
-		&kCFTypeDictionaryKeyCallBacks,
-		&kCFTypeDictionaryValueCallBacks));
-
-	/* Required elements */
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrKeyType, CFString, params, true);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrKeySizeInBits, CFNumber, params, true);
-
-	/* Immediately store key in keychain */
-	MARSHAL_KEYGEN_PARAM(ret, kSecUseKeychain, SecKeychain, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrLabel, CFString, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrApplicationLabel, CFString, params, false);
-
-	/* Access Control Settings */
-	// TODO: MARSHAL_KEYGEN_PARAM(ret, kSecAttrAccess, SecAccessGetTypeID(), params, 0);
-
-	/* Usage */
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanEncrypt, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanDecrypt, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanWrap, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanUnwrap, CFBoolean, params, false);
-
-	return ret;
-}
-/* }}} */
 
 /* {{{ proto SecKey SecKey::GenerateSymmetric(array $params) */
 ZEND_BEGIN_ARG_INFO_EX(seckey_gensym_arginfo, 0, ZEND_RETURN_VALUE, 1)
@@ -121,7 +68,8 @@ static PHP_METHOD(SecKey, GenerateSymmetric) {
 		return;
 	}
 
-	auto dict = marshal_symmetric_keygen_params(params);
+	SecAttr_zend_array_check_required_params(params, {zstr_kSecAttrKeyType, zstr_kSecAttrKeySizeInBits});
+	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
 
 	CFErrorRef error = nullptr;
 	auto key = SecKeyGenerateSymmetric(dict.get(), &error);
@@ -148,10 +96,11 @@ static PHP_METHOD(SecKey, DeriveFromPassword) {
 	CFType<CFStringRef> cfpassword(zend_string_to_CFString(password));
 	HANDLE_ERROR(!cfpassword, error, "Unable to translate password");
 
-	auto dict = marshal_symmetric_keygen_params(params);
-	MARSHAL_KEYGEN_PARAM(dict, kSecAttrSalt, CFData, params, true);
-	MARSHAL_KEYGEN_PARAM(dict, kSecAttrPRF, CFString, params, true);
-	MARSHAL_KEYGEN_PARAM(dict, kSecAttrRounds, CFNumber, params, true);
+	SecAttr_zend_array_check_required_params(params, {
+		zstr_kSecAttrKeyType, zstr_kSecAttrKeySizeInBits,
+		zstr_kSecAttrSalt, zstr_kSecAttrPRF, zstr_kSecAttrRounds
+	});
+	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
 
 	auto key = SecKeyDeriveFromPassword(cfpassword.get(), dict.get(), &error);
 	HANDLE_ERROR(!key, error, "Unable to generate symmetric key");
@@ -160,54 +109,6 @@ static PHP_METHOD(SecKey, DeriveFromPassword) {
 }
 /* }}} */
 #endif /* SEC_OS_OSX */
-
-/* {{{ marshal_keygen_params */
-static CFType<CFMutableDictionaryRef> marshal_keygen_params(zend_array *params, bool top) {
-	CFType<CFMutableDictionaryRef> ret(CFDictionaryCreateMutable(nullptr,
-		zend_hash_num_elements(params) + 1, /* Extra space for isPermanent */
-		&kCFTypeDictionaryKeyCallBacks,
-		&kCFTypeDictionaryValueCallBacks));
-
-	if (top) {
-		MARSHAL_KEYGEN_PARAM(ret, kSecAttrKeyType, CFString, params, true);
-		MARSHAL_KEYGEN_PARAM(ret, kSecAttrKeySizeInBits, CFNumber, params, true);
-		MARSHAL_KEYGEN_PARAM(ret, kSecAttrTokenID, CFString, params, false);
-	}
-
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrLabel, CFString, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrApplicationTag, CFString, params, false);
-
-	/* Immediately store key in keychain */
-	if (zend_symtable_exists(params, zstr_kSecUseKeychain)) {
-		CFDictionaryAddValue(ret.get(), kSecAttrIsPermanent, kCFBooleanTrue);
-		MARSHAL_KEYGEN_PARAM(ret, kSecUseKeychain, SecKeychain, params, true);
-	}
-
-	/* Usage */
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanEncrypt, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanDecrypt, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanDerive, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanSign, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanVerify, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanWrap, CFBoolean, params, false);
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrCanUnwrap, CFBoolean, params, false);
-
-	if (top) {
-		zval *priv = zend_symtable_find(params, zstr_kSecPrivateKeyAttrs);
-		zval *pub = zend_symtable_find(params, zstr_kSecPublicKeyAttrs);
-
-		if (priv && (Z_TYPE_P(priv) == IS_ARRAY)) {
-			auto dict = marshal_keygen_params(Z_ARR_P(priv), false);
-			CFDictionaryAddValue(ret.get(), kSecPrivateKeyAttrs, dict.get());
-		}
-		if (pub && (Z_TYPE_P(pub) == IS_ARRAY)) {
-			auto dict = marshal_keygen_params(Z_ARR_P(pub), false);
-			CFDictionaryAddValue(ret.get(), kSecPublicKeyAttrs, dict.get());
-		}
-	}
-
-	return ret;
-}
 
 /* {{{ proto SecKey SecKey::CreateRandomKey(array $params) */
 ZEND_BEGIN_ARG_INFO_EX(key_createrandomkey_arginfo, 0, ZEND_RETURN_VALUE, 1)
@@ -220,7 +121,27 @@ static PHP_METHOD(SecKey, CreateRandomKey) {
 		return;
 	}
 
-	auto dict = marshal_keygen_params(params, true);
+	SecAttr_zend_array_check_required_params(params, {zstr_kSecAttrKeyType, zstr_kSecAttrKeySizeInBits});
+	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params, [](
+		CFMutableDictionaryRef dict, zend_string* key, zval* value) {
+		/* Attrs may appear at top level, or under public/private subkeys */
+		if (zend_string_equals(key, zstr_kSecPrivateKeyAttrs)) {
+			if (Z_TYPE_P(value) != IS_ARRAY) {
+				throw DarwinException(0, "Private key attrs must be an array");
+			}
+			CFDictionaryAddValue(dict, kSecPrivateKeyAttrs,
+				SecAttr_zend_array_to_CFMutableDictionary(Z_ARR_P(value)).get());
+		} else if (zend_string_equals(key, zstr_kSecPublicKeyAttrs)) {
+			if (Z_TYPE_P(value) != IS_ARRAY) {
+				throw DarwinException(0, "Public key attrs must be an array");
+			}
+			CFDictionaryAddValue(dict, kSecPublicKeyAttrs,
+				SecAttr_zend_array_to_CFMutableDictionary(Z_ARR_P(value)).get());
+		} else {
+			return false;
+		}
+		return true;
+	});
 
 	CFErrorRef error = nullptr;
 	auto key = SecKeyCreateRandomKey(dict.get(), &error);
@@ -252,19 +173,6 @@ static PHP_METHOD(SecKey, getPublicKey) {
 /* }}} */
 
 #if SEC_OS_OSX
-/* {{{ marshal_wrap_params */
-static CFType<CFMutableDictionaryRef> marshal_wrap_params(zend_array *params) {
-	CFType<CFMutableDictionaryRef> ret(CFDictionaryCreateMutable(nullptr,
-		zend_hash_num_elements(params),
-		&kCFTypeDictionaryKeyCallBacks,
-		&kCFTypeDictionaryValueCallBacks));
-
-	MARSHAL_KEYGEN_PARAM(ret, kSecAttrSalt, CFData, params, true);
-
-	return ret;
-}
-/* }}} */
-
 /* {{{ proto string SecKey::wrapKey(SecKey $keyToWrap, array $params) */
 ZEND_BEGIN_ARG_INFO_EX(seckey_wrapsym_arginfo, 0, ZEND_RETURN_VALUE, 2)
 	ZEND_ARG_INFO(0, keyToWrap)
@@ -280,7 +188,8 @@ static PHP_METHOD(SecKey, wrapSymmetric) {
 		return;
 	}
 
-	auto dict = marshal_wrap_params(params);
+	SecAttr_zend_array_check_required_params(params, {zstr_kSecAttrSalt});
+	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
 
 	SECKEY(key);
 	SECKEY_FROM(wrapKey, keyToWrap);
@@ -308,7 +217,9 @@ static PHP_METHOD(SecKey, unwrapSymmetric) {
 
 	SECKEY(key);
 	CFType<CFDataRef> data(zend_string_to_CFData(wrappedKey));
-	auto dict = marshal_wrap_params(params);
+
+	SecAttr_zend_array_check_required_params(params, {zstr_kSecAttrSalt});
+	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
 
 	CFErrorRef error = nullptr;
 	auto ret = SecKeyUnwrapSymmetric(data.byref(), key, dict.get(), &error);

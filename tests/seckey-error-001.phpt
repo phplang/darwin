@@ -11,4 +11,4 @@ try {
   echo "Caught: ", $e->getMessage(), "\n";
 }
 --EXPECT--
-Caught: Missing element 'type' from keygen params
+Caught: Missing required elements in parameters array: type, bsiz
