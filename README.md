@@ -73,6 +73,38 @@ abstract final class Darwin\SecKeychain {
 }
 ```
 
+[SecKeychainItem](https://developer.apple.com/documentation/security/keychain_services/keychain_items)
+
+The return types of SecKeychainItem::Create() and SecKeychainItem::Find()
+are dependent on which one (and only one) of the following three keys in $params
+is set to true.
+
+  * Security::kSecReturnRef - An object instance (SecKeychainItem, SecKey, SecCertificate, etc...)
+  * Security::kSecReturnData - The item's raw data (DER payload, Password, etc...)
+  * Security::kSecReturnAttributes - An associative array of attributes.
+
+Note that `Security::kSecReturnData` requires `Security::kSecMatchLimit == Security::kSecMatchLimitOne`.
+
+```php
+final class Darwin\SecKeychainItem {
+  /**
+   * Create a new keychain item.
+   * If kSecUseKeychain is specified, it will be added to that keychain,
+   * otherwise the new item will be added to the default keychain.
+   * kSecClass MUST be specified, and set to one of the kSecClass* types
+   * with the appropriate kSecValueData.
+   */
+  static public function Create(array $params): mixed;
+
+  /**
+   * Query all known keychains for the specified item.
+   *
+   * Returns NULL if the query returns no results.
+   */
+  static public function Find(array $params): mixed;
+}
+```
+
 [SecCertificate](https://developer.apple.com/documentation/security/seccertificate)
 ```php
 final class Darwin\SecCertificate {

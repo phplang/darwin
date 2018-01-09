@@ -44,7 +44,8 @@ namespace php { namespace darwin {
 	X(SecKey) \
 	X(SecKeychain) \
 	X(SecCertificate) \
-	X(SecTransform)
+	X(SecTransform) \
+	X(SecKeychainItem)
 
 #define PHP_DARWINTYPES(X) \
 	PHP_BASICDARWINTYPES(X) \

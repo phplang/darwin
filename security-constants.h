@@ -516,7 +516,7 @@ PHP_DARWIN_STR(kSecOIDX509V3SignedCertificateCStruct)
 /* Search Attributes - https://developer.apple.com/documentation/security/keychain_services/keychain_items/search_attribute_keys_and_values */
 PHP_DARWIN_STR(kSecMatchPolicy)
 PHP_DARWIN_STR(kSecMatchItemList)
-PHP_DARWIN_STR(kSecMatchSearchList)
+PHP_DARWIN_ATTR(kSecMatchSearchList, CFArray)
 PHP_DARWIN_STR(kSecMatchIssuers)
 PHP_DARWIN_STR(kSecMatchEmailAddressIfPresent)
 PHP_DARWIN_STR(kSecMatchSubjectContains)
@@ -528,7 +528,7 @@ PHP_DARWIN_STR(kSecMatchDiacriticInsensitive)
 PHP_DARWIN_STR(kSecMatchWidthInsensitive)
 PHP_DARWIN_STR(kSecMatchTrustedOnly)
 PHP_DARWIN_STR(kSecMatchValidOnDate)
-PHP_DARWIN_STR(kSecMatchLimit)
+PHP_DARWIN_ATTR(kSecMatchLimit, CFString)
 PHP_DARWIN_STR(kSecMatchLimitOne)
 PHP_DARWIN_STR(kSecMatchLimitAll)
 PHP_DARWIN_STR(kSecUseItemList)
@@ -668,6 +668,14 @@ PHP_DARWIN_STR(kSecAttrAccessGroupToken)
 PHP_DARWIN_STR(kSecPrivateKeyAttrs)
 PHP_DARWIN_STR(kSecPublicKeyAttrs)
 
+/* Keychain Item key and values - https://developer.apple.com/documentation/security/keychain_services/keychain_items/item_class_keys_and_values */
+PHP_DARWIN_ATTR(kSecClass, CFString)
+PHP_DARWIN_STR(kSecClassGenericPassword)
+PHP_DARWIN_STR(kSecClassInternetPassword)
+PHP_DARWIN_STR(kSecClassCertificate)
+PHP_DARWIN_STR(kSecClassKey)
+PHP_DARWIN_STR(kSecClassIdentity)
+
 /* https://developer.apple.com/documentation/security/security_transforms/transform_attributes */
 PHP_DARWIN_STR(kSecEncodeLineLengthAttribute)
 PHP_DARWIN_STR(kSecEncodeTypeAttribute)
@@ -728,3 +736,11 @@ PHP_DARWIN_LONG(kSecp384r1)
 PHP_DARWIN_LONG(kSecp521r1)
 PHP_DARWIN_LONG(kSecRSAMin)
 PHP_DARWIN_LONG(kSecRSAMax)
+
+/* Value and Return keys/values - https://developer.apple.com/documentation/security/keychain_services/keychain_items/item_return_result_keys */
+PHP_DARWIN_STR(kSecValueData);
+PHP_DARWIN_STR(kSecValueRef);
+PHP_DARWIN_ATTR(kSecReturnData, CFBoolean);
+PHP_DARWIN_ATTR(kSecReturnRef, CFBoolean);
+PHP_DARWIN_ATTR(kSecReturnAttributes, CFBoolean);
+
