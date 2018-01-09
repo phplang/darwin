@@ -38,7 +38,7 @@ m_status(status) {
 		if (len) { 
 			// Two messages, concat them.
 			char *str;
-			zend_spprintf(&str, 0, "%s: %s", str, ZSTR_VAL(zstr));
+			zend_spprintf(&str, 0, "%s: %s", m_message, ZSTR_VAL(zstr));
 			efree(m_message);
 			m_message = str;
 		} else {
