@@ -262,7 +262,7 @@ void zval_from_CFDate(zval *pzv, CFDateRef date) {
 	ZVAL_STRING(&fname, "date_create");
 
 	std::ostringstream ss;
-	ss << '@' << (CFDateGetAbsoluteTime(date) + k20010101_000000_GMT);
+	ss << '@' << ((int64_t)(CFDateGetAbsoluteTime(date) + k20010101_000000_GMT));
 	zval arg;
 	ZVAL_STRING(&arg, ss.str().c_str());
 
@@ -305,7 +305,6 @@ void zval_from_CFType(zval *pzv, CFTypeRef value) {
 #define X(T) \
 	if (type == k##T##TypeID) { \
 		zval_from_##T(pzv, (T##Ref)value); \
-		CFRelease(value); \
 		return; \
 	}
 PHP_DARWINTYPES(X)
