@@ -227,6 +227,20 @@ zend_array* zend_array_from_CFArray(CFArrayRef arr) {
 	return ret;
 }
 
+CFArrayRef zend_array_to_CFArray(zend_array *arr) {
+	CFType<CFMutableArrayRef> ret(CFArrayCreateMutable(nullptr,
+		zend_hash_num_elements(arr),
+		&kCFTypeArrayCallBacks));
+
+	zval *val;
+	ZEND_HASH_FOREACH_VAL(arr, val) {
+		CFType<CFTypeRef> cfval(zval_to_CFType(val));
+		CFArrayAppendValue(ret.get(), cfval.release());
+	} ZEND_HASH_FOREACH_END();
+
+	return ret.release();
+}
+
 /*************************************************************************/
 // CFDictionary
 
@@ -248,6 +262,29 @@ zend_array* zend_array_from_CFDictionary(CFDictionaryRef dict) {
 	// TODO: An exception during the callback might... break things.
 	CFDictionaryApplyFunction(dict, elem_from_cfelem, ret);
 	return ret;
+}
+
+CFDictionaryRef zend_array_to_CFDictionary(zend_array *arr) {
+	CFType<CFMutableDictionaryRef> ret(CFDictionaryCreateMutable(nullptr,
+		zend_hash_num_elements(arr),
+		&kCFTypeDictionaryKeyCallBacks,
+		&kCFTypeDictionaryValueCallBacks));
+
+	zend_long idx;
+	zend_string *key;
+	zval *val;
+	ZEND_HASH_FOREACH_KEY_VAL(arr, idx, key, val) {
+		CFType<CFTypeRef> cfval(zval_to_CFType(val));
+		if (key) {
+			CFType<CFStringRef> cfkey(zend_string_to_CFString(key));
+			CFDictionaryAddValue(ret.get(), cfkey.get(), cfval.get());
+		} else {
+			CFType<CFNumberRef> cfidx(zend_long_to_CFNumber(idx));
+			CFDictionaryAddValue(ret.get(), cfidx.get(), cfval.get());
+		}
+	} ZEND_HASH_FOREACH_END();
+
+	return ret.release();
 }
 
 /*************************************************************************/
@@ -320,6 +357,38 @@ CFTypeRef zval_to_CFType(zval *value, CFTypeID type) {
 PHP_DARWINTYPES(X)
 #undef X
 	throw DarwinException(0, "Unknown Darwin type: %lx", (long)type);
+}
+
+CFTypeRef zval_to_CFType(zval *value) {
+	switch (Z_TYPE_P(value)) {
+		case IS_UNDEF:
+		case IS_NULL:
+			throw DarwinException(0, "Don't know what to do with a null value");
+		case IS_TRUE:
+		case IS_FALSE:
+			return zval_to_CFBoolean(value);
+		case IS_LONG:
+		case IS_DOUBLE:
+			return zval_to_CFNumber(value);
+		case IS_STRING:
+			php_error(E_WARNING, "String input is ambiguous, assuming binary");
+			return zval_to_CFData(value);
+		case IS_ARRAY:
+			return zval_to_CFArray(value);
+		case IS_RESOURCE:
+			throw DarwinException(0, "Don't knwo what to do with a resource");
+		case IS_OBJECT: {
+			auto* ce = Z_OBJCE_P(value);
+#define X(T) \
+			if (instanceof_function(ce, T##_ce)) { return zval_to_##T(value); }
+PHP_OBJECTDARWINTYPES(X)
+#undef X
+			// TODO: Deal with DateTimeInterface as well
+			throw DarwinException(0, "Don't know what to do with a %s object", ZSTR_VAL(ce->name));
+		}
+		default:
+			throw DarwinException(0, "Unknown variable type");
+	}
 }
 
 /*************************************************************************/

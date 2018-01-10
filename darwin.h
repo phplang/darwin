@@ -252,20 +252,28 @@ inline void zval_from_CFData(zval *pzv, CFDataRef str) {
 	ZVAL_STR(pzv, zend_string_from_CFData(str));
 }
 
-zend_array* zend_array_from_CFArray(CFArrayRef dict);
-inline void zval_from_CFArray(zval *pzv, CFArrayRef dict) {
-	ZVAL_ARR(pzv, zend_array_from_CFArray(dict));
+zend_array* zend_array_from_CFArray(CFArrayRef list);
+inline void zval_from_CFArray(zval *pzv, CFArrayRef list) {
+	ZVAL_ARR(pzv, zend_array_from_CFArray(list));
 }
+CFArrayRef zend_array_to_CFArray(zend_array *arr);
 inline CFArrayRef zval_to_CFArray(zval *pzv) {
-	throw DarwinException(0, "zval_to_CFArray() makes no sense");
+	if (Z_TYPE_P(pzv) != IS_ARRAY) {
+		throw DarwinException(0, "Expected value of type array");
+	}
+	return zend_array_to_CFArray(Z_ARR_P(pzv));
 }
 
 zend_array* zend_array_from_CFDictionary(CFDictionaryRef dict);
 inline void zval_from_CFDictionary(zval *pzv, CFDictionaryRef dict) {
 	ZVAL_ARR(pzv, zend_array_from_CFDictionary(dict));
 }
-inline CFArrayRef zval_to_CFDictionary(zval *pzv) {
-	throw DarwinException(0, "zval_to_CFDictionary() makes no sense");
+CFDictionaryRef zend_array_to_CFDictionary(zend_array *arr);
+inline CFDictionaryRef zval_to_CFDictionary(zval *pzv) {
+	if (Z_TYPE_P(pzv) != IS_ARRAY) {
+		throw DarwinException(0, "Expected value of type array");
+	}
+	return zend_array_to_CFDictionary(Z_ARR_P(pzv));
 }
 
 void zval_from_CFDate(zval *pzv, CFDateRef date);
@@ -293,6 +301,7 @@ PHP_OBJECTDARWINTYPES(X)
 #undef X
 
 void zval_from_CFType(zval *pzv, CFTypeRef value);
+CFTypeRef zval_to_CFType(zval *value);
 CFTypeRef zval_to_CFType(zval *value, CFTypeID type);
 
 #define RETURN_CFBOOLEAN(cfbool) do { zval_from_CFBoolean(return_value, cfbool); return; } while (false)
