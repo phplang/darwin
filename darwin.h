@@ -305,13 +305,20 @@ void zval_from_CFType(zval *pzv, CFTypeRef value);
 CFTypeRef zval_to_CFType(zval *value);
 CFTypeRef zval_to_CFType(zval *value, CFTypeID type);
 
-#define RETURN_CFBOOLEAN(cfbool) do { zval_from_CFBoolean(return_value, cfbool); return; } while (false)
-#define RETURN_CFNUMBER(cfnum) do { zval_from_CFNumber(return_value, cfnum); return; } while (false)
-#define RETURN_CFSTRING(cfstr) do { zval_from_CFString(return_value, cfstr); return; } while (false)
-#define RETURN_CFDATA(cfdata) do { zval_from_CFData(return_value, cfdata); return; } while (false)
-#define RETURN_CFARRAY(cfarray) do { zval_from_CFArray(return_value, cfarray); return; } while (false)
-#define RETURN_CFDICTIONARY(cfdict) do { zval_from_CFDictionary(return_value, cfdict); return; } while (false)
-#define RETURN_CFTYPE(cftype) do { zval_from_CFType(return_value, cftype); return; } while (false)
+#define RETURN_TYPED_CFTYPE(val, type) do { \
+	auto val_ = (CFTypeRef)(val); \
+	zval_from_##type(return_value, (type##Ref)val_); \
+	CFRelease(val_); \
+	return; \
+} while (false)
+
+#define RETURN_CFBOOLEAN(val)    RETURN_TYPED_CFTYPE(val, CFBoolean)
+#define RETURN_CFNUMBER(val)     RETURN_TYPED_CFTYPE(val, CFNumber)
+#define RETURN_CFSTRING(val)     RETURN_TYPED_CFTYPE(val, CFString)
+#define RETURN_CFDATA(val)       RETURN_TYPED_CFTYPE(val, CFData)
+#define RETURN_CFARRAY(val)      RETURN_TYPED_CFTYPE(val, CFArray)
+#define RETURN_CFDICTIONARY(val) RETURN_TYPED_CFTYPE(val, CFDictionary)
+#define RETURN_CFTYPE(val)       RETURN_TYPED_CFTYPE(val, CFType)
 
 /**********************************************************************/
 // Security
@@ -330,10 +337,11 @@ PHP_OBJECTDARWINTYPES(X)
 
 PHP_MINIT_FUNCTION(darwin_SecTransform);
 
-#define RETURN_SECKEY(val) do { zval_from_SecKey(return_value, val); return; } while (false)
-#define RETURN_SECKEYCHAIN(val) do { zval_from_SecKeychain(return_value, val); return; } while (false)
-#define RETURN_SECCERTIFICATE(val) do { zval_from_SecCertificate(return_value, val); return; } while (false)
-#define RETURN_SECTRANSFORM(val) do { zval_from_SecTransform(return_value, val); return; } while (false)
+#define RETURN_SECKEY(val)          RETURN_TYPED_CFTYPE(val, SecKey)
+#define RETURN_SECKEYCHAIN(val)     RETURN_TYPED_CFTYPE(val, SecKeychain)
+#define RETURN_SECKEYCHAINITEM(val) RETURN_TYPED_CFTYPE(val, SecKeychainItem)
+#define RETURN_SECCERTIFICATE(val)  RETURN_TYPED_CFTYPE(val, SecCertificate)
+#define RETURN_SECTRANSFORM(val)    RETURN_TYPED_CFTYPE(val, SecTransform)
 
 #define PHP_DARWIN_LONG(X)
 #define PHP_DARWIN_STR(X) \

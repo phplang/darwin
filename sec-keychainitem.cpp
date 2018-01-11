@@ -84,6 +84,10 @@ static PHP_METHOD(SecKeychainItem, Create) {
 		throw SecurityException(status, "Unable to create keychain item");
 	}
 
+	// Ordinarily, RETURN_CFTYPE() takes ownership of the CFTypeRef,
+	// but in this case, we don't actually HAVE ownership to give.
+	// Explicitly retain a reference in this special case.
+	CFRetain(item);
 	RETURN_CFTYPE(item);
 }
 /* }}} */
