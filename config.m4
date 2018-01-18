@@ -39,6 +39,7 @@ int main(void) {
 
   PHP_NEW_EXTENSION(darwin, darwin.cpp security.cpp \
     exception.cpp security-exception.cpp cf-error.cpp \
+    common-crypto.cpp \
     sec-keychain.cpp sec-certificate.cpp sec-key.cpp sec-transform.cpp \
     sec-keychainitem.cpp, \
     $ext_shared, , [-std=c++11])

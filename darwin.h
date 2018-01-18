@@ -352,6 +352,11 @@ PHP_MINIT_FUNCTION(darwin_SecTransform);
 #undef PHP_DARWIN_STR
 #undef PHP_DARWIN_LONG
 
+/**********************************************************************/
+// CommonCrypto
+
+PHP_MINIT_FUNCTION(darwin_CommonCrypto);
+
 }} // namesapce php::darwin
 
 #endif	/* incl_DARWIN_H */
