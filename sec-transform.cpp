@@ -133,6 +133,29 @@ static PHP_METHOD(SecTransform, DecryptTransformCreate) {
 }
 /* }}} */
 
+/* {{{ proto SecTransform SecTransform::DigestTransformCreate(string $type[, int $length = 0]) */
+ZEND_BEGIN_ARG_INFO_EX(sectrans_digestcreate_arginfo, 0, ZEND_RETURN_VALUE, 1)
+	ZEND_ARG_TYPE_INFO(0, type, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, length, IS_LONG, 0)
+ZEND_END_ARG_INFO();
+static PHP_METHOD(SecTransform, DigestTransformCreate) {
+	zend_string *type;
+	zend_long length = 0;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "Sl", &type, &length) == FAILURE) {
+		return;
+	}
+
+	CFType<CFStringRef> cftype(zend_string_to_CFString(type));
+
+	CFErrorRef error = nullptr;
+	auto xform = SecDigestTransformCreate(cftype.get(), (CFIndex)length, &error);
+	HANDLE_ERROR(!xform, error, "Unable to create transform");
+
+	RETURN_SECTRANSFORM(xform);
+}
+/* }}} */
+
 /* {{{ do_setattr - Set a typed transform attribute */
 void do_setattr(INTERNAL_FUNCTION_PARAMETERS, CFTypeID cftype) {
 	zend_string *key;
@@ -233,6 +256,8 @@ static zend_function_entry sectransform_methods[] = {
 
 	PHP_ME(SecTransform, EncryptTransformCreate, sectrans_keycreate_arginfo, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_ME(SecTransform, DecryptTransformCreate, sectrans_keycreate_arginfo, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+
+	PHP_ME(SecTransform, DigestTransformCreate, sectrans_digestcreate_arginfo, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
 	PHP_ME(SecTransform, setBooleanAttribute, sectrans_setBoolean_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(SecTransform, setIntAttribute,     sectrans_setInt_arginfo,     ZEND_ACC_PUBLIC)
