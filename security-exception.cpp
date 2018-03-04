@@ -32,7 +32,7 @@ m_status(status) {
 	va_end(args);
 
 	// Can other frameworks produce OSStatus codes?
-	CFType<CFStringRef> secmsg(SecCopyErrorMessageString(status, nullptr));
+	CFUniquePtr<CFStringRef> secmsg(SecCopyErrorMessageString(status, nullptr));
 	auto *zstr = zend_string_from_CFString(secmsg.get(), false); 
 	if (zstr && ZSTR_LEN(zstr)) {
 		if (len) { 

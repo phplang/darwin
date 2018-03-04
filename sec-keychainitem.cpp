@@ -45,7 +45,7 @@ static PHP_METHOD(SecKeychainItem, Create) {
 		return;
 	}
 
-	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params,
+	CFUniquePtr<CFDictionaryRef> dict(SecAttr_zend_array_to_CFMutableDictionary(params,
 		[params](CFMutableDictionaryRef dict, zend_string *key, zval *value) {
 			// kSecValueData always takes CFData of the thing's underlying representation.
 			// kSecValueRef takes an object instance.
@@ -57,7 +57,7 @@ static PHP_METHOD(SecKeychainItem, Create) {
 				throw DarwinException(0, "kSecClass must be a string property");
 			}
 			auto *clsstr = Z_STR_P(cls);
-			CFType<CFTypeRef> cfval;
+			CFUniquePtr<CFTypeRef> cfval;
 			if (!isRef) {
 				cfval.reset(zval_to_CFData(value));
 			} else {
@@ -76,7 +76,7 @@ static PHP_METHOD(SecKeychainItem, Create) {
 			CFDictionaryAddValue(dict, isRef ? kSecValueRef : kSecValueData, cfval.get());
 			return true;
 		}
-	);
+	));
 
 	CFTypeRef item = nullptr;
 	auto status = SecItemAdd(dict.get(), &item);
@@ -103,7 +103,7 @@ static PHP_METHOD(SecKeychainItem, Find) {
 		return;
 	}
 
-	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
+	CFUniquePtr<CFDictionaryRef> dict(SecAttr_zend_array_to_CFMutableDictionary(params));
 
 	CFTypeRef item = nullptr;
 	auto status = SecItemCopyMatching(dict.get(), &item);

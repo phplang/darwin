@@ -69,7 +69,7 @@ static PHP_METHOD(SecKey, GenerateSymmetric) {
 	}
 
 	SecAttr_zend_array_check_required_params(params, {zstr_kSecAttrKeyType, zstr_kSecAttrKeySizeInBits});
-	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
+	CFUniquePtr<CFDictionaryRef> dict(SecAttr_zend_array_to_CFMutableDictionary(params));
 
 	CFErrorRef error = nullptr;
 	auto key = SecKeyGenerateSymmetric(dict.get(), &error);
@@ -93,14 +93,14 @@ static PHP_METHOD(SecKey, DeriveFromPassword) {
 	}
 
 	CFErrorRef error = nullptr;
-	CFType<CFStringRef> cfpassword(zend_string_to_CFString(password));
+	CFUniquePtr<CFStringRef> cfpassword(zend_string_to_CFString(password));
 	HANDLE_ERROR(!cfpassword, error, "Unable to translate password");
 
 	SecAttr_zend_array_check_required_params(params, {
 		zstr_kSecAttrKeyType, zstr_kSecAttrKeySizeInBits,
 		zstr_kSecAttrSalt, zstr_kSecAttrPRF, zstr_kSecAttrRounds
 	});
-	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
+	CFUniquePtr<CFDictionaryRef> dict(SecAttr_zend_array_to_CFMutableDictionary(params));
 
 	auto key = SecKeyDeriveFromPassword(cfpassword.get(), dict.get(), &error);
 	HANDLE_ERROR(!key, error, "Unable to generate symmetric key");
@@ -122,26 +122,26 @@ static PHP_METHOD(SecKey, CreateRandomKey) {
 	}
 
 	SecAttr_zend_array_check_required_params(params, {zstr_kSecAttrKeyType, zstr_kSecAttrKeySizeInBits});
-	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params, [](
+	CFUniquePtr<CFDictionaryRef> dict(SecAttr_zend_array_to_CFMutableDictionary(params, [](
 		CFMutableDictionaryRef dict, zend_string* key, zval* value) {
 		/* Attrs may appear at top level, or under public/private subkeys */
 		if (zend_string_equals(key, zstr_kSecPrivateKeyAttrs)) {
 			if (Z_TYPE_P(value) != IS_ARRAY) {
 				throw DarwinException(0, "Private key attrs must be an array");
 			}
-			CFDictionaryAddValue(dict, kSecPrivateKeyAttrs,
-				SecAttr_zend_array_to_CFMutableDictionary(Z_ARR_P(value)).get());
+			CFUniquePtr<CFDictionaryRef> val(SecAttr_zend_array_to_CFMutableDictionary(Z_ARR_P(value)));
+			CFDictionaryAddValue(dict, kSecPrivateKeyAttrs, val.get());
 		} else if (zend_string_equals(key, zstr_kSecPublicKeyAttrs)) {
 			if (Z_TYPE_P(value) != IS_ARRAY) {
 				throw DarwinException(0, "Public key attrs must be an array");
 			}
-			CFDictionaryAddValue(dict, kSecPublicKeyAttrs,
-				SecAttr_zend_array_to_CFMutableDictionary(Z_ARR_P(value)).get());
+			CFUniquePtr<CFDictionaryRef> val(SecAttr_zend_array_to_CFMutableDictionary(Z_ARR_P(value)));
+			CFDictionaryAddValue(dict, kSecPublicKeyAttrs, val.get());
 		} else {
 			return false;
 		}
 		return true;
-	});
+	}));
 
 	CFErrorRef error = nullptr;
 	auto key = SecKeyCreateRandomKey(dict.get(), &error);
@@ -189,7 +189,7 @@ static PHP_METHOD(SecKey, wrapSymmetric) {
 	}
 
 	SecAttr_zend_array_check_required_params(params, {zstr_kSecAttrSalt});
-	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
+	CFUniquePtr<CFDictionaryRef> dict(SecAttr_zend_array_to_CFMutableDictionary(params));
 
 	SECKEY(key);
 	SECKEY_FROM(wrapKey, keyToWrap);
@@ -216,13 +216,14 @@ static PHP_METHOD(SecKey, unwrapSymmetric) {
 	}
 
 	SECKEY(key);
-	CFType<CFDataRef> data(zend_string_to_CFData(wrappedKey));
 
 	SecAttr_zend_array_check_required_params(params, {zstr_kSecAttrSalt});
-	auto dict = SecAttr_zend_array_to_CFMutableDictionary(params);
+	CFUniquePtr<CFDictionaryRef> dict(SecAttr_zend_array_to_CFMutableDictionary(params));
 
 	CFErrorRef error = nullptr;
-	auto ret = SecKeyUnwrapSymmetric(data.byref(), key, dict.get(), &error);
+	auto data = zend_string_to_CFData(wrappedKey);
+	auto ret = SecKeyUnwrapSymmetric(&data, key, dict.get(), &error);
+	CFUniquePtr<CFDataRef> cfdata(data);
 	HANDLE_ERROR(!ret, error, "Unable to unwrap key");
 
 	RETURN_SECKEY(ret);

@@ -24,6 +24,7 @@
 #include <Security/Security.h>
 
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace php { namespace darwin {
@@ -58,6 +59,18 @@ PHP_OBJECTDARWINTYPES(X)
 #define X(T) extern CFTypeID k##T##TypeID;
 PHP_DARWINTYPES(X)
 #undef X
+
+namespace {
+template<typename T>
+struct CFReleaser {
+	void operator()(T ptr) {
+		CFRelease(ptr);
+	}
+};
+} // namespace
+
+template<typename T>
+using CFUniquePtr = std::unique_ptr<typename std::remove_pointer<T>::type, CFReleaser<T>>;
 
 /*************************************************************************/
 // C++ exceptions throwable to PHP
@@ -180,47 +193,6 @@ private:
 PHP_MINIT_FUNCTION(darwin_cferror);
 PHP_MINIT_FUNCTION(darwin_Exception);
 
-template<typename T>
-class CFType {
-public:
-	CFType(): m_px(nullptr) {}
-	CFType(const CFType<T>& src) {
-		m_px = src.m_px;
-		if (m_px) { CFRetain(m_px); }
-	}
-	CFType(CFType<T>&& src) {
-		m_px = src.m_px;
-	}
-	CFType& operator=(const CFType<T>&) = delete;
-
-	enum IncRefType { kAddRef = true, kKeepRef = false };
-	explicit CFType(T px, IncRefType reftype = kKeepRef): m_px(px) {
-		if (m_px && (reftype == kAddRef)) {
-			CFRetain(m_px);
-		}
-	}
-	~CFType() { if (m_px) { CFRelease(m_px); } }
-
-	T get() const { return m_px; }
-	T* byref() { return &m_px; }
-	T release() { auto ret = m_px; m_px = nullptr; return ret; }
-	void reset(T px, IncRefType incref = kKeepRef) {
-		if (m_px) {
-			CFRelease(m_px);
-		}
-		if (px && (incref == kAddRef)) {
-			CFRetain(px);
-		}
-		m_px = px;
-	}
-
-	bool operator!() const { return m_px == nullptr; }
-	operator bool() const { return m_px != nullptr; }
-
-private:
-	T m_px;
-};
-
 inline zend_bool zend_bool_from_CFBoolean(CFBooleanRef bval) {
 	return (bval == kCFBooleanTrue) ? 1 : 0;
 }
@@ -324,7 +296,7 @@ CFTypeRef zval_to_CFType(zval *value, CFTypeID type);
 // Security
 
 PHP_MINIT_FUNCTION(darwin_Security);
-CFType<CFMutableDictionaryRef> SecAttr_zend_array_to_CFMutableDictionary(
+CFMutableDictionaryRef SecAttr_zend_array_to_CFMutableDictionary(
 	zend_array *arr,
 	std::function<bool(CFMutableDictionaryRef, zend_string*, zval*)> unknown = nullptr
 );

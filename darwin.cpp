@@ -228,13 +228,13 @@ zend_array* zend_array_from_CFArray(CFArrayRef arr) {
 }
 
 CFArrayRef zend_array_to_CFArray(zend_array *arr) {
-	CFType<CFMutableArrayRef> ret(CFArrayCreateMutable(nullptr,
+	CFUniquePtr<CFMutableArrayRef> ret(CFArrayCreateMutable(nullptr,
 		zend_hash_num_elements(arr),
 		&kCFTypeArrayCallBacks));
 
 	zval *val;
 	ZEND_HASH_FOREACH_VAL(arr, val) {
-		CFType<CFTypeRef> cfval(zval_to_CFType(val));
+		CFUniquePtr<CFTypeRef> cfval(zval_to_CFType(val));
 		CFArrayAppendValue(ret.get(), cfval.release());
 	} ZEND_HASH_FOREACH_END();
 
@@ -265,7 +265,7 @@ zend_array* zend_array_from_CFDictionary(CFDictionaryRef dict) {
 }
 
 CFDictionaryRef zend_array_to_CFDictionary(zend_array *arr) {
-	CFType<CFMutableDictionaryRef> ret(CFDictionaryCreateMutable(nullptr,
+	CFUniquePtr<CFMutableDictionaryRef> ret(CFDictionaryCreateMutable(nullptr,
 		zend_hash_num_elements(arr),
 		&kCFTypeDictionaryKeyCallBacks,
 		&kCFTypeDictionaryValueCallBacks));
@@ -274,12 +274,12 @@ CFDictionaryRef zend_array_to_CFDictionary(zend_array *arr) {
 	zend_string *key;
 	zval *val;
 	ZEND_HASH_FOREACH_KEY_VAL(arr, idx, key, val) {
-		CFType<CFTypeRef> cfval(zval_to_CFType(val));
+		CFUniquePtr<CFTypeRef> cfval(zval_to_CFType(val));
 		if (key) {
-			CFType<CFStringRef> cfkey(zend_string_to_CFString(key));
+			CFUniquePtr<CFStringRef> cfkey(zend_string_to_CFString(key));
 			CFDictionaryAddValue(ret.get(), cfkey.get(), cfval.get());
 		} else {
-			CFType<CFNumberRef> cfidx(zend_long_to_CFNumber(idx));
+			CFUniquePtr<CFNumberRef> cfidx(zend_long_to_CFNumber(idx));
 			CFDictionaryAddValue(ret.get(), cfidx.get(), cfval.get());
 		}
 	} ZEND_HASH_FOREACH_END();

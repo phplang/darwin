@@ -73,7 +73,8 @@ void do_keycreate(INTERNAL_FUNCTION_PARAMETERS, CtorFunc ctor, PubKey pubkey = k
 		return;
 	}
 	SECKEY_FROM(keyval, zkey);
-	CFType<SecKeyRef> key(keyval, CFType<SecKeyRef>::IncRefType::kAddRef);
+	CFRetain(keyval);
+	CFUniquePtr<SecKeyRef> key(keyval);
 
 	if (pubkey == kUsePublic) {
 		auto pub = SecKeyCopyPublicKey(key.get());
@@ -108,10 +109,11 @@ static PHP_METHOD(SecTransform, VerifyTransformCreate) {
 	}
 
 	SECKEY_FROM(keyval, zkey);
-	CFType<SecKeyRef> key(keyval, CFType<SecKeyRef>::IncRefType::kAddRef);
+	CFRetain(keyval);
+	CFUniquePtr<SecKeyRef> key(keyval);
 	if (auto pub = SecKeyCopyPublicKey(key.get())) { key.reset(pub); }
 
-	CFType<CFDataRef> cfsig(zend_string_to_CFData(sig));
+	CFUniquePtr<CFDataRef> cfsig(zend_string_to_CFData(sig));
 
 	CFErrorRef error = nullptr;
 	auto xform = SecVerifyTransformCreate(key.get(), cfsig.get(), &error);
@@ -146,7 +148,7 @@ static PHP_METHOD(SecTransform, DigestTransformCreate) {
 		return;
 	}
 
-	CFType<CFStringRef> cftype(zend_string_to_CFString(type));
+	CFUniquePtr<CFStringRef> cftype(zend_string_to_CFString(type));
 
 	CFErrorRef error = nullptr;
 	auto xform = SecDigestTransformCreate(cftype.get(), (CFIndex)length, &error);
@@ -176,8 +178,8 @@ void do_setattr(INTERNAL_FUNCTION_PARAMETERS, CFTypeID cftype) {
 		                         "receive it from SecTransform::execute()");
 	}
 
-	CFType<CFStringRef> cfkey(zend_string_to_CFString(key));
-	CFType<CFTypeRef> cfval(zval_to_CFType(arg, cftype));
+	CFUniquePtr<CFStringRef> cfkey(zend_string_to_CFString(key));
+	CFUniquePtr<CFTypeRef> cfval(zval_to_CFType(arg, cftype));
 	CFErrorRef error = nullptr;
 	SecTransformSetAttribute(xform, cfkey.get(), cfval.get(), &error);
 	if (error) { throw CFErrorException(error); }
@@ -214,7 +216,7 @@ static PHP_METHOD(SecTransform, getAttribute) {
 
 	SECTRANSFORM(xform);
 
-	CFType<CFStringRef> cfkey(zend_string_to_CFString(key));
+	CFUniquePtr<CFStringRef> cfkey(zend_string_to_CFString(key));
 	auto ret = SecTransformGetAttribute(xform, cfkey.get());
 	if (!ret) {
 		RETURN_NULL();
@@ -236,12 +238,12 @@ static PHP_METHOD(SecTransform, execute) {
 	}
 	SECTRANSFORM(xform);
 
-	CFType<CFDataRef> cfinput(zend_string_to_CFData(input));
+	CFUniquePtr<CFDataRef> cfinput(zend_string_to_CFData(input));
 	CFErrorRef error = nullptr;
 	SecTransformSetAttribute(xform, kSecTransformInputAttributeName, cfinput.get(), &error);
 	if (error) { throw CFErrorException(error); }
 
-	CFType<CFTypeRef> ret(SecTransformExecute(xform, &error));
+	CFUniquePtr<CFTypeRef> ret(SecTransformExecute(xform, &error));
 	if (error) { throw CFErrorException(error); }
 
 	RETURN_CFTYPE(ret.release());

@@ -34,24 +34,27 @@ static zend_class_entry *security_ce = nullptr;
 #undef PHP_DARWIN_STR
 #undef PHP_DARWIN_LONG
 
-static CFType<CFTypeRef> zval_secattr_to_CFType(zval *value, zend_string* zkey, CFStringRef& key) {
-	CFType<CFStringRef> cfkey(zend_string_to_CFString(zkey));
+static CFUniquePtr<CFTypeRef> zval_secattr_to_CFType(zval *value, zend_string* zkey, CFStringRef& key) {
+	CFUniquePtr<CFStringRef> cfkey(zend_string_to_CFString(zkey));
 #define PHP_DARWIN_LONG(X)
 #define PHP_DARWIN_STR(X)
 #define PHP_DARWIN_ATTR(name, type) \
 	if (!CFStringCompare(cfkey.get(), name, 0)) { \
 		key = name; \
-		return CFType<CFTypeRef>(zval_to_##type(value)); \
+		return CFUniquePtr<CFTypeRef>(zval_to_##type(value)); \
 	}
 # include "security-constants.h"
 #undef PHP_DARWIN_ATTR
 #undef PHP_DARWIN_STR
 #undef PHP_DARWIN_LONG
-	return CFType<CFTypeRef>();
+	return CFUniquePtr<CFTypeRef>();
 }
 
-CFType<CFMutableDictionaryRef> SecAttr_zend_array_to_CFMutableDictionary(zend_array *arr, std::function<bool(CFMutableDictionaryRef, zend_string*, zval*)> unknown) {
-	CFType<CFMutableDictionaryRef> dict(CFDictionaryCreateMutable(nullptr,
+CFMutableDictionaryRef SecAttr_zend_array_to_CFMutableDictionary(
+	zend_array *arr,
+	std::function<bool(CFMutableDictionaryRef, zend_string*, zval*)> unknown
+) {
+	CFUniquePtr<CFMutableDictionaryRef> dict(CFDictionaryCreateMutable(nullptr,
 		zend_hash_num_elements(arr),
 		&kCFTypeDictionaryKeyCallBacks,
 		&kCFTypeDictionaryValueCallBacks));
@@ -73,7 +76,7 @@ CFType<CFMutableDictionaryRef> SecAttr_zend_array_to_CFMutableDictionary(zend_ar
 		}
 	} ZEND_HASH_FOREACH_END();
 
-	return dict;
+	return dict.release();
 }
 
 static zend_function_entry security_methods[] = {
